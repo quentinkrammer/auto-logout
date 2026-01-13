@@ -32,7 +32,7 @@ function App() {
         <button onClick={onLogin}>Login</button>
       )}
 
-      <a target="_blank" href={import.meta.env.BASE_URL}>
+      <a target="_blank" rel="opener" href={import.meta.env.BASE_URL}>
         link to open in new tab
       </a>
     </div>
