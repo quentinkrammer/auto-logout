@@ -6,22 +6,69 @@ function App() {
     () => window.sessionStorage.getItem("isAuthed") === "true"
   );
 
+  const [authChannel, _] = useState(new BroadcastChannel("auth_token"));
+  // useEffect(() => {
+  //   function onStorageChangeInDifferentTab(e: StorageEvent) {
+  //     console.log("Session storage changed:", e.key, e.oldValue, e.newValue);
+  //     if (e.storageArea === sessionStorage && e.key === "isAuthed") {
+  //       window.sessionStorage.setItem(e.key, e.newValue ?? "");
+  //       setIsAuthed(e.newValue === "true");
+  //     }
+  //   }
+
+  //   window.addEventListener("storage", onStorageChangeInDifferentTab);
+  //   console.log("onStorageChangeInDifferentTab registered");
+
+  //   () => window.removeEventListener("storage", onStorageChangeInDifferentTab);
+  // }, []);
+
   useEffect(() => {
-    window.addEventListener("storage", function (e) {
-      if (e.storageArea === sessionStorage) {
-        console.log("Session storage changed:", e.key, e.oldValue, e.newValue);
+    function onAuthChannelEvent(e: MessageEvent) {
+      {
+        const token = window.sessionStorage.getItem("isAuthed");
+
+        switch (e.data.message) {
+          case "NEW_TAB":
+            console.log("auth_channel: NEW_TAB");
+            if (token) {
+              authChannel.postMessage({ message: "AUTH_TOKEN", token });
+            }
+            break;
+          case "AUTH_TOKEN":
+            console.log("auth_channel: AUTH_TOKEN");
+            if (!token) {
+              window.sessionStorage.setItem("isAuthed", e.data.token);
+              setIsAuthed(window.sessionStorage.getItem("isAuthed") === "true");
+            }
+            break;
+          case "SIGN_OUT":
+            console.log("auth_channel: SIGN_OUT");
+            window.sessionStorage.removeItem("token");
+            setIsAuthed(window.sessionStorage.getItem("isAuthed") === "true");
+        }
       }
-    });
-  });
+    }
+
+    authChannel.addEventListener("message", onAuthChannelEvent);
+
+    authChannel.postMessage({ message: "NEW_TAB" });
+
+    () => {
+      authChannel.removeEventListener("message", onAuthChannelEvent);
+    };
+  }, []);
 
   function onLogin() {
     window.sessionStorage.setItem("isAuthed", "true");
-    setIsAuthed(true);
+    authChannel.postMessage({
+      message: "AUTH_TOKEN",
+      token: window.sessionStorage.getItem("isAuthed"),
+    });
   }
 
   function onLogout() {
-    window.sessionStorage.setItem("isAuthed", "false");
-    setIsAuthed(false);
+    window.sessionStorage.removeItem("isAuthed");
+    authChannel.postMessage("SIGN_OUT");
   }
 
   return (
